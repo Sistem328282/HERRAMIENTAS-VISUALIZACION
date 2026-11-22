@@ -257,22 +257,18 @@ with abajo_izq:
     st.pyplot(fig)
 
 with abajo_der:
-    st.subheader("Promedio por mes y año")
-    calor = principal.pivot_table(index="Anio", columns="Mes",
-                                  values="Valor", aggfunc="mean")
+    st.subheader("Distribución de la variación diaria")
+    # La variación ya se calculó arriba, en el boxplot por año.
+    variacion = principal["Variacion"].dropna()
 
     fig, ax = plt.subplots(figsize=(6, 3.4))
-    imagen = ax.imshow(calor, cmap="YlGnBu", aspect="auto")
-    fig.colorbar(imagen, ax=ax)
-    ax.set_xticks(range(len(calor.columns)))
-    ax.set_xticklabels(["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul",
-                        "Ago", "Sep", "Oct", "Nov", "Dic"][:len(calor.columns)])
-    ax.set_yticks(range(len(calor.index)))
-    ax.set_yticklabels(calor.index)
-    ax.grid(False)
+    ax.hist(variacion, bins=30, color=AZUL, edgecolor="white")
+    ax.axvline(0, color=ROJO, linewidth=1, linestyle="--")
+    ax.set_xlabel("Variación diaria (%)")
+    ax.set_ylabel("Días")
     st.pyplot(fig)
-    st.caption("Escala secuencial: el valor tiene orden pero no un cero "
-               "con significado, así que no va divergente.")
+    st.caption("La mayoría de los días se mueve poco: la masa está cerca "
+               "de cero y las colas muestran los días de movimientos grandes.")
 
 
 # ─── Datos ─────────────────────────────────────────────────────────────
