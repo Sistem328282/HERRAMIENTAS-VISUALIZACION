@@ -1,5 +1,7 @@
 # Tablero del SIE de Banxico, con token
 # Herramientas de Visualización · IDIA22X · Paarcial III
+# ED.03.03: se integra una segunda serie del SIE, la TIIE a 28 días
+# (SF43783), junto al tipo de cambio FIX (SF43718).
 #
 #     pip install -r requirements.txt
 #     streamlit run dashboard_banxico.py
@@ -127,9 +129,9 @@ def consultar(claves, inicio, fin, token):
 with st.sidebar:
     st.header("Qué consultar")
     texto = st.text_input(
-        "Claves de las series", "SF43718",
+        "Claves de las series", "SF43718,SF43783",
         help="Sepáralas con comas. Búscalas en el catálogo del SIE. "
-             "SF43718 es el tipo de cambio FIX.")
+             "SF43718 es el tipo de cambio FIX y SF43783 es la TIIE a 28 días.")
     inicio = st.date_input("Desde", date(2021, 1, 1))
     fin = st.date_input("Hasta", date(2025, 12, 31))
     suavizado = st.slider("Días de media móvil", 1, 90, 30)
@@ -166,11 +168,15 @@ if limpio.empty:
 principal = limpio[limpio["Clave"] == claves[0]].sort_values("Fecha").copy()
 titulo_principal = principal["Serie"].iloc[0]
 
+# Títulos de todas las series cargadas, para el encabezado y el resumen.
+titulos = {c: limpio.loc[limpio["Clave"] == c, "Serie"].iloc[0]
+           for c in claves if (limpio["Clave"] == c).any()}
+
 
 # ─── Encabezado e indicadores ──────────────────────────────────────────
 st.title("Tablero de series del SIE")
 # El título lo declara Banxico: confirma que la clave es la correcta.
-st.caption(f"{titulo_principal} · del {inicio} al {fin} · "
+st.caption(f"{' · '.join(titulos.values())} · del {inicio} al {fin} · "
            f"consultado el {datetime.now():%d/%m/%Y %H:%M}")
 
 primero = principal["Valor"].iloc[0]
@@ -183,6 +189,31 @@ c3.metric("Último valor", f"{ultimo:,.4f}",
           delta=f"{(ultimo / primero - 1) * 100:+.1f} % en el periodo")
 c4.metric("Mínimo y máximo",
           f"{principal['Valor'].min():,.2f} – {principal['Valor'].max():,.2f}")
+
+st.divider()
+
+
+# ─── Resumen por serie (ED.03.03) ─
+# La integración no es solo pedir dos series: cada una tiene su propio
+# resumen, para que la segunda serie no aparezca solo en la comparación.
+st.subheader("Resumen por serie")
+filas = []
+for clave in claves:
+    parte = limpio[limpio["Clave"] == clave].sort_values("Fecha")
+    if parte.empty:
+        continue
+    primero_s = parte["Valor"].iloc[0]
+    ultimo_s = parte["Valor"].iloc[-1]
+    filas.append({
+        "Serie": titulos.get(clave, clave),
+        "Clave": clave,
+        "Último valor": f"{ultimo_s:,.4f}",
+        "Variación en el periodo (%)": f"{(ultimo_s / primero_s - 1) * 100:+.1f}",
+        "Mínimo": f"{parte['Valor'].min():,.4f}",
+        "Máximo": f"{parte['Valor'].max():,.4f}",
+        "Días con dato": len(parte),
+    })
+st.dataframe(pd.DataFrame(filas), hide_index=True)
 
 st.divider()
 
